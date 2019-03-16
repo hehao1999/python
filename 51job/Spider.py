@@ -88,9 +88,9 @@ def parse_list(url, try_num):
                     'url': item.find('span:nth-child(3) > a:nth-child(1)').attr('href'),
                     'company': item.find('span:nth-child(2) > a:nth-child(1)').text(),
                     'company_url': item.find('span:nth-child(2) > a:nth-child(1)').attr('href'),
-                    'location': item.find('span:nth-child(3)').text(),
-                    'salar': item.find('span:nth-child(4)').text(),
-                    'time': item.find('span:nth-child(5)').text(),
+                    'location': item.find('span.t3').text(),
+                    'salar': item.find('span.t4').text(),
+                    'time': item.find('span.t5').text(),
                 }
                 parse_url(data['url'], 1)
                 save_to_mongodb(data)
@@ -211,6 +211,9 @@ def run_fast():
 
 
 if __name__ == '__main__':
+    """
+    tip: 如需使用代理请先运行代理池并确保代理池中有合法代理
+    """
     if MUL_THREAD == False:
         run()
     else:
