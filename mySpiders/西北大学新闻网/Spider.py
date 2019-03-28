@@ -6,7 +6,6 @@ from pyquery import PyQuery as pq
 """
 BASE_URL = 'http://news.nwu.edu.cn/home/index/articles/mid/565{}.html?page={}'
 PAGES = [1, 2, 3, 5, 6]
-PROXIES = ''
 HEADERS = {
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
     'Accept-Encoding': 'gzip, deflate',
@@ -18,7 +17,26 @@ HEADERS = {
     'Upgrade-Insecure-Requests': '1',
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36'
 }
-
+PROXY_URL = 'http://localhost:5555/random'
+PROXIES = dict()
+def get_proxy():
+    """
+    获取随机代理
+    :return:
+    """
+    try:
+        r = requests.get(PROXY_URL)
+        if r.status_code == 200:
+            print("get proxy successfully:", r.text)
+            return {
+                'http': 'http://' + r.text,
+                'https': 'https://' + r.text
+            }
+        print("get proxy:None")
+        return None
+    except requests.ConnectionError:
+        print("get proxy:None")
+        return None
 
 def get_page():
     """
@@ -28,11 +46,18 @@ def get_page():
     try:
         for i in PAGES:
             url = BASE_URL.format(i, 1)
-            response = requests.get(url, headers=HEADERS, proxies=PROXIES)
+
+            response = requests.get(url, headers=HEADERS, proxies=PROXIES,timeout=10)
             print(url, response.status_code)
+            if response.status_code != 200:
+                PROXIES.clear()
+                PROXIES.update(get_proxy())
+                get_page()
             page = int(pq(response.text).find('#main > div > div > div.erji-content.fl > div.yema > div > ul > li:nth-child(12) > a').text())
             yield page
     except:
+        PROXIES.clear()
+        PROXIES.update(get_proxy())
         get_page()
 
 
@@ -43,8 +68,12 @@ def parse_detail(url):
     :return: 具体文章内容
     """
     try:
-        response = requests.get(url, headers=HEADERS, proxies=PROXIES)
+        response = requests.get(url, headers=HEADERS, proxies=PROXIES,timeout=10)
         print(url, response.status_code)
+        if response.status_code != 200:
+            PROXIES.clear()
+            PROXIES.update(get_proxy())
+            parse_detail(url)
         doc = pq(response.text)
         title = doc.find('.danpian-h1').text()
         info = doc.find('.danpian-h2').text()
@@ -57,6 +86,8 @@ def parse_detail(url):
         print(data)
         return data
     except:
+        PROXIES.clear()
+        PROXIES.update(get_proxy())
         parse_detail(url)
 
 
@@ -70,13 +101,17 @@ def get_title(page, page_count):
     try:
         for i in range(1, page_count + 1):
             url = BASE_URL.format(page, page_count)
-            response = requests.get(url, headers=HEADERS, proxies=PROXIES)
+            response = requests.get(url, headers=HEADERS, proxies=PROXIES,timeout=10)
             print(url, response.status_code)
+            if response.status_code != 200:
+                PROXIES.clear()
+                PROXIES.update(get_proxy())
+                get_title(page, page_count)
             doc = pq(response.text)
             items = doc('#main > div > div > div.erji-content.fl > div.erji-content-list > div > ul').find('li').items()
             for i in items:
                 title = i.find('a').text()
-                link = url + i.find('a').attr('href')
+                link = 'http://news.nwu.edu.cn' + i.find('a').attr('href')
                 data = {
                     'title': title,
                     'link': link,
@@ -84,6 +119,8 @@ def get_title(page, page_count):
                 print(data)
                 parse_detail(link)
     except:
+        PROXIES.clear()
+        PROXIES.update(get_proxy())
         get_title(page,page_count)
 
 
@@ -92,13 +129,18 @@ def main():
     主函数，调度爬虫
     :return:
     """
+    PROXIES.clear()
+    PROXIES.update(get_proxy())
     pages = list(get_page())
+    while not pages:
+        pages = list(get_page())
     print(pages)
     for i in PAGES:
         k = 0
         for j in range(pages[k]):
             get_title(i, j)
         k+=1
+
 
 
 if __name__ == '__main__':
