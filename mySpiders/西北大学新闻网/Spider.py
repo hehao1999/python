@@ -1,3 +1,5 @@
+import os
+import re
 import requests
 from pyquery import PyQuery as pq
 
@@ -19,6 +21,8 @@ HEADERS = {
 }
 PROXY_URL = 'http://localhost:5555/random'
 PROXIES = dict()
+
+
 def get_proxy():
     """
     获取随机代理
@@ -38,6 +42,7 @@ def get_proxy():
         print("get proxy:None")
         return None
 
+
 def get_page():
     """
     获取每个需要爬取的网页内最大页码数列表
@@ -47,13 +52,14 @@ def get_page():
         for i in PAGES:
             url = BASE_URL.format(i, 1)
 
-            response = requests.get(url, headers=HEADERS, proxies=PROXIES,timeout=10)
+            response = requests.get(url, headers=HEADERS, proxies=PROXIES, timeout=10)
             print(url, response.status_code)
             if response.status_code != 200:
                 PROXIES.clear()
                 PROXIES.update(get_proxy())
                 get_page()
-            page = int(pq(response.text).find('#main > div > div > div.erji-content.fl > div.yema > div > ul > li:nth-child(12) > a').text())
+            page = int(pq(response.text).find(
+                '#main > div > div > div.erji-content.fl > div.yema > div > ul > li:nth-child(12) > a').text())
             yield page
     except:
         PROXIES.clear()
@@ -68,7 +74,7 @@ def parse_detail(url):
     :return: 具体文章内容
     """
     try:
-        response = requests.get(url, headers=HEADERS, proxies=PROXIES,timeout=10)
+        response = requests.get(url, headers=HEADERS, proxies=PROXIES, timeout=10)
         print(url, response.status_code)
         if response.status_code != 200:
             PROXIES.clear()
@@ -83,7 +89,7 @@ def parse_detail(url):
             'info': info,
             'article': article
         }
-        print(data)
+        save_to_txt(data)
         return data
     except:
         PROXIES.clear()
@@ -101,7 +107,7 @@ def get_title(page, page_count):
     try:
         for i in range(1, page_count + 1):
             url = BASE_URL.format(page, page_count)
-            response = requests.get(url, headers=HEADERS, proxies=PROXIES,timeout=10)
+            response = requests.get(url, headers=HEADERS, proxies=PROXIES, timeout=10)
             print(url, response.status_code)
             if response.status_code != 200:
                 PROXIES.clear()
@@ -116,12 +122,52 @@ def get_title(page, page_count):
                     'title': title,
                     'link': link,
                 }
-                print(data)
+                save_to_csv(data)
                 parse_detail(link)
     except:
         PROXIES.clear()
         PROXIES.update(get_proxy())
-        get_title(page,page_count)
+        get_title(page, page_count)
+
+
+def validateTitle(title):
+    """
+    去除不能作文件名的符号
+    :param title:
+    :return:
+    """
+    rstr = r"[\/\\\:\*\?\"\<\>\|]"  # '/ \ : * ? " < > |'
+    new_title = re.sub(rstr, "_", title)  # 替换为下划线
+    return new_title
+
+
+def save_to_txt(data):
+    """
+    存储文章
+    :param data:
+    :return:
+    """
+    try:
+        data['title'] = validateTitle(data['title'])
+        with open(os.getcwd() + '\\新闻\\' + data['title'] + '.txt', 'w', encoding='utf-8') as f:
+            f.write(data['info'] + '\n')
+            data['article'].replace('\n', '')
+            f.write(data['article'])
+    except Exception as e:
+        print('遇到错误：'+e.args)
+
+
+def save_to_csv(data):
+    """
+    存储文章列表
+    :param data:
+    :return:
+    """
+    try:
+        with open(os.getcwd() + '\\' + '爬取列表.csv', 'a+') as f:
+            f.write(data['title'] + ',' + data['link'] + '\n')
+    except Exception as e:
+        print('遇到错误：'+e.args)
 
 
 def main():
@@ -132,15 +178,13 @@ def main():
     PROXIES.clear()
     PROXIES.update(get_proxy())
     pages = list(get_page())
-    while not pages:
+    while not len(pages) == 5:
         pages = list(get_page())
-    print(pages)
     for i in PAGES:
         k = 0
         for j in range(pages[k]):
             get_title(i, j)
-        k+=1
-
+        k += 1
 
 
 if __name__ == '__main__':
