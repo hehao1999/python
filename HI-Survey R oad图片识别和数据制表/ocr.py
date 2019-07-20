@@ -51,7 +51,7 @@ def ocr(a, b):
         N_TEMP = tesserocr.image_to_text(N).strip().replace('.', '').replace(' ', '')
         N = N_TEMP[0:7] + '.' + N_TEMP[7:]  # 也可以先转化为为二值图像后使用参数OEM=2直接识别小数点，但速度太慢
         E_TEMP = tesserocr.image_to_text(E).strip()
-        E = N_TEMP[0:6] + '.' + N_TEMP[6:]
+        E = E_TEMP[0:6] + '.' + E_TEMP[6:]
         Z = tesserocr.image_to_text(Z).strip()
         sigmaN = tesserocr.image_to_text(sigmaN).strip()
         sigmaE = tesserocr.image_to_text(sigmaE).strip()
